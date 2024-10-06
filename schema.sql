@@ -1,3 +1,6 @@
+CREATE DATABASE pollen;
+\c pollen
+
 CREATE TABLE
     allergen_types (
         id int PRIMARY KEY,
