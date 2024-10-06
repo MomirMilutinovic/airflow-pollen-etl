@@ -16,6 +16,15 @@ CREATE TABLE
     );
 
 CREATE TABLE
+    allergen_thresholds (
+        allergen_id int PRIMARY KEY,
+        moderate_threshold int,
+        high_threshold int,
+        very_high_threshold int,
+        CONSTRAINT fk_allergen FOREIGN KEY (allergen_id) REFERENCES allergens (id)
+    );
+
+CREATE TABLE
     locations (
         id int PRIMARY KEY,
         name varchar(50),
