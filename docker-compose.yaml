@@ -17,6 +17,140 @@ services:
       - ./grafana/dashboard.yaml:/etc/grafana/provisioning/dashboards/main.yaml
       - ./grafana/datasource.yaml:/etc/grafana/provisioning/datasources/postgres.yaml
       - ./grafana/dashboards:/var/lib/grafana/dashboards
+  
+  airflow-postgres:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+
+  init-airflow:
+    image: apache/airflow:latest
+    depends_on:
+      - airflow-postgres
+    environment:
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
+    command: >
+      bash -c "airflow db init && 
+               airflow users create --username airflow --password password --firstname John --lastname Doe --role Admin --email admin@example.com"
+
+  webserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    user: root
+    depends_on:
+      - ariflow-postgres
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./etl:/opt/airflow/etl
+      - ./etl:/usr/local/spark/app # Spark scripts folder (Must be the same path in airflow and Spark Cluster)
+      - ./data:/usr/local/spark/resources/data #Resources folder (Must be the same path in airflow and Spark Cluster)
+    environment:
+      - LOAD_EX=n
+      - EXECUTOR=Local
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
+      - AIRFLOW_CONN_DESTINATION_POSTGRES=postgres://postgres:secret@postgres:5434/pollen
+      - AIRFLOW__CORE__FERNET_KEY=plIipb9RU3-3wJ1UNaAtqVNJrqFEks1-dGbJM34EW7U=
+      - AIRFLOW__WEBSERVER__DEFAULT_USER_USERNAME=airflow
+      - AIRFLOW__WEBSERVER__DEFAULT_USER_PASSWORD=password
+      - AIRFLOW_WWW_USER_USERNAME=airflow
+      - AIRFLOW_WWW_USER_PASSWORD=password
+      - AIRFLOW__WEBSERVER__SECRET_KEY=secret
+      - AIRFLOW_VAR_POLLEN_BASE_URL=http://polen.sepa.gov.rs/api/opendata/
+      - AIRFLOW_VAR_POSTGRES_URL=jdbc:postgresql://postgres:5432/pollen
+      - AIRFLOW_VAR_POSTGRES_USER=postgres
+      - AIRFLOW_VAR_POSTGRES_PASSWORD=mysecretpassword
+      - AIRFLOW_VAR_POSTGRES_DRIVER=org.postgresql.Driver
+      - AIRFLOW_CONN_SPARK_DEFAULT=spark://spark%3A%2F%2Fspark:7077/spark?deploy-mode=client&spark_binary=spark-submit
+
+    ports:
+      - "8081:8080"
+    command: webserver
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    user: root
+    depends_on:
+      - ariflow-postgres
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./etl:/opt/airflow/etl
+      - ./data:/usr/local/spark/resources/data #Resources folder (Must be the same path in airflow and Spark Cluster)
+      - ./etl:/usr/local/spark/app # Spark scripts folder (Must be the same path in airflow and Spark Cluster)
+    environment:
+      - LOAD_EX=n
+      - EXECUTOR=Local
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
+      - AIRFLOW_CONN_DESTINATION_POSTGRES=postgres://postgres:secret@postgres:5434/pollen
+      - AIRFLOW__CORE__FERNET_KEY=plIipb9RU3-3wJ1UNaAtqVNJrqFEks1-dGbJM34EW7U=
+      - AIRFLOW__WEBSERVER__SECRET_KEY=secret
+      - AIRFLOW_WWW_USER_USERNAME=airflow
+      - AIRFLOW_WWW_USER_PASSWORD=password
+      - AIRFLOW_VAR_POLLEN_BASE_URL=http://polen.sepa.gov.rs/api/opendata/
+      - AIRFLOW_VAR_POSTGRES_URL=jdbc:postgresql://postgres:5432/pollen
+      - AIRFLOW_VAR_POSTGRES_USER=postgres
+      - AIRFLOW_VAR_POSTGRES_PASSWORD=mysecretpassword
+      - AIRFLOW_VAR_POSTGRES_DRIVER=org.postgresql.Driver
+      - AIRFLOW_CONN_SPARK_DEFAULT=spark://spark%3A%2F%2Fspark:7077/spark?deploy-mode=client&spark_binary=spark-submit
+    command: scheduler
+
+  # Spark with 3 workers
+  spark:
+      image: bitnami/spark:3.5.3
+      user: root # Run container as root container: https://docs.bitnami.com/tutorials/work-with-non-root-containers/
+      hostname: spark
+      environment:
+          - SPARK_MODE=master
+          - SPARK_RPC_AUTHENTICATION_ENABLED=no
+          - SPARK_RPC_ENCRYPTION_ENABLED=no
+          - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+          - SPARK_SSL_ENABLED=no
+      volumes:
+          - ./etl:/usr/local/spark/app # Spark scripts folder (Must be the same path in airflow and Spark Cluster)
+          - ./data:/usr/local/spark/resources/data #Resources folder (Must be the same path in airflow and Spark Cluster)
+      ports:
+          - "8181:8080"
+          - "7077:7077"
+
+  spark-worker-1:
+      image: bitnami/spark:3.5.3
+      user: root
+      environment:
+          - SPARK_MODE=worker
+          - SPARK_MASTER_URL=spark://spark:7077
+          - SPARK_WORKER_MEMORY=2G
+          - SPARK_WORKER_CORES=2
+          - SPARK_RPC_AUTHENTICATION_ENABLED=no
+          - SPARK_RPC_ENCRYPTION_ENABLED=no
+          - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+          - SPARK_SSL_ENABLED=no
+      volumes:
+          - ./etl:/usr/local/spark/app # Spark scripts folder (Must be the same path in airflow and Spark Cluster)
+          - ./data:/usr/local/spark/resources/data #Resources folder (Must be the same path in airflow and Spark Cluster)
+
+  spark-worker-2:
+      image: bitnami/spark:3.5.3
+      user: root
+      environment:
+          - SPARK_MODE=worker
+          - SPARK_MASTER_URL=spark://spark:7077
+          - SPARK_WORKER_MEMORY=2G
+          - SPARK_WORKER_CORES=2
+          - SPARK_RPC_AUTHENTICATION_ENABLED=no
+          - SPARK_RPC_ENCRYPTION_ENABLED=no
+          - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+          - SPARK_SSL_ENABLED=no
+      volumes:
+          - ./etl:/usr/local/spark/app # Spark scripts folder (Must be the same path in airflow and Spark Cluster)
+          - ./data:/usr/local/spark/resources/data #Resources folder (Must be the same path in airflow and Spark Cluster)
 
 volumes:
     pg-data:
