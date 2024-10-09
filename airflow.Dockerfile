@@ -7,3 +7,4 @@ ENV JAVA_HOME='/usr/lib/jvm/java-17-openjdk-amd64'
 USER airflow
 # Install the Spark provider for Airflow
 RUN pip install apache-airflow-providers-apache-spark
+RUN pip install cyrtranslit==1.1.1
