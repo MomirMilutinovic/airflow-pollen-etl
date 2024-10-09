@@ -26,7 +26,7 @@ def parse_arguments():
 
 def download_concentrations(url, pollen_ids, destination_dir):
     url = url + "?"
-    batch_size = 30
+    batch_size = 20
     for i in range(0, len(pollen_ids), batch_size):
         last_id_in_batch = min(i + batch_size, len(pollen_ids))
         cur_url = url + "&".join(

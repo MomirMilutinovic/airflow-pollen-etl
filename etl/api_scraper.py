@@ -59,7 +59,7 @@ def main(args):
 
     if args.wrap_in_list:
         data = [data]
-
+    
     export_to_json(data, args.destination)
 
 if __name__ == "__main__":
