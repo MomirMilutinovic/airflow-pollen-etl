@@ -112,18 +112,6 @@ def get_transform_and_load_spark_submit_operator(name, args, dag):
     )
 
 
-def scrape_allergen_types():
-    run_scraper("allergen-types")
-
-
-def scrape_allergens():
-    run_scraper("allergens")
-
-
-def scrape_locations():
-    run_scraper("locations")
-
-
 def scrape_pollens():
     run_python_script(
         "/opt/airflow/etl/download_pollens.py",
@@ -145,17 +133,17 @@ make_directories_task = BashOperator(
 
 scrape_allergen_types_task = PythonOperator(
     task_id="scrape_allergen_types",
-    python_callable=scrape_allergen_types,
+    python_callable=lambda: run_scraper("allergen-types"),
     dag=dag,
 )
 scrape_allergens_task = PythonOperator(
     task_id="scrape_allergens",
-    python_callable=scrape_allergens,
+    python_callable=lambda: run_scraper("allergens"),
     dag=dag,
 )
 scrape_locations_task = PythonOperator(
     task_id="scrape_locations",
-    python_callable=scrape_locations,
+    python_callable=lambda: run_scraper("locations"),
     dag=dag,
 )
 scrape_pollens_task = PythonOperator(
