@@ -114,7 +114,7 @@ def get_transform_and_load_spark_submit_operator(name, args, dag):
 
 def scrape_pollens():
     run_python_script(
-        "/opt/airflow/etl/download_pollens.py",
+        "/opt/airflow/etl/scrape_pollens.py",
         [pollen_base_url + "pollens/", "/usr/local/spark/resources/data/pollens"],
     )
 
@@ -153,7 +153,7 @@ scrape_pollens_task = PythonOperator(
 )
 scrape_concentrations_task = get_spark_submit_operator(
     "scrape-concentrations",
-    "/usr/local/spark/app/download_concentrations.py",
+    "/usr/local/spark/app/scrape_concentrations.py",
     [
         pollen_base_url + "concentrations/",
         "/usr/local/spark/resources/data/pollens",
