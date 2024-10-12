@@ -43,11 +43,25 @@ def run_scraper(path):
     )
 
 
-def get_spark_job_arguments(input_dir, columns_to_transliterate=None, initcap_columns=None, drop_columns=None, type_mapping=None, rename_mapping=None, input_is_parquet=False):
+def get_spark_job_arguments(
+    input_dir,
+    destination_table_name=None,
+    columns_to_transliterate=None,
+    initcap_columns=None,
+    drop_columns=None,
+    type_mapping=None,
+    rename_mapping=None,
+    input_is_parquet=False,
+):
+    destination_table_name = (
+        input_dir.replace("-", "_")
+        if destination_table_name is None
+        else destination_table_name
+    )
     args = [
         f"/usr/local/spark/resources/data/{input_dir}",
         postgres_url,
-        input_dir.replace("-", "_"), # - is a prohibited character in postgres table names
+        destination_table_name,
         "--user",
         postgres_user,
         "--password",
@@ -55,7 +69,7 @@ def get_spark_job_arguments(input_dir, columns_to_transliterate=None, initcap_co
         "--driver",
         postgres_driver,
         "--driver_jar",
-        "/usr/local/spark/app/postgresql-42.7.4.jar"
+        "/usr/local/spark/app/postgresql-42.7.4.jar",
     ]
 
     if columns_to_transliterate is not None:
