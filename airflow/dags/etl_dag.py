@@ -5,6 +5,7 @@ from airflow.models import Variable
 from airflow.operators.python_operator import PythonOperator
 from airflow.operators.bash import BashOperator
 from airflow.contrib.operators.spark_submit_operator import SparkSubmitOperator
+from functools import partial
 import subprocess
 import json
 
@@ -77,10 +78,11 @@ def get_spark_job_arguments(input_dir, columns_to_transliterate=None, initcap_co
 
     return args
 
-def get_transform_and_load_spark_submit_operator(name, args, dag):
+
+def get_spark_submit_operator(name, application, args, dag):
     return SparkSubmitOperator(
         task_id=name,
-        application="/usr/local/spark/app/transform_and_load.py",
+        application=application,
         name=name.replace("_", "-"),
         conn_id="spark_default",
         verbose=True,
@@ -88,6 +90,13 @@ def get_transform_and_load_spark_submit_operator(name, args, dag):
         application_args=args,
         dag=dag,
     )
+
+
+def get_transform_and_load_spark_submit_operator(name, args, dag):
+    return get_spark_submit_operator(
+        name, "/usr/local/spark/app/transform_and_load.py", args, dag
+    )
+
 
 def scrape_allergen_types():
     run_scraper("allergen-types")
@@ -140,71 +149,77 @@ scrape_pollens_task = PythonOperator(
     python_callable=scrape_pollens,
     dag=dag,
 )
-scrape_concentrations_task = SparkSubmitOperator(
-    task_id="scrape_concentrations",
-    application="/usr/local/spark/app/download_concentrations.py", 
-    name="scrape-concentrations",
-    conn_id="spark_default",
-    verbose=True,
-    application_args=[
+scrape_concentrations_task = get_spark_submit_operator(
+    "scrape-concentrations",
+    "/usr/local/spark/app/download_concentrations.py",
+    [
         pollen_base_url + "concentrations/",
         "/usr/local/spark/resources/data/pollens",
         "/usr/local/spark/resources/data/concentrations",
     ],
-    dag=dag,
+    dag,
 )
-join_pollens_and_concentrations_task = SparkSubmitOperator(
-    task_id="join_pollens_and_concentrations",
-    application="/usr/local/spark/app/join_pollens_and_concentrations.py",
-    name="join-pollens-and-concentrations",
-    conn_id="spark_default",
-    conf={"spark.submit.user": "spark"},
-    env_vars={"SPARK_USER": "spark"},
-    verbose=True,
-    application_args=[
+join_pollens_and_concentrations_task = get_spark_submit_operator(
+    "join_pollens_and_concentrations",
+    "/usr/local/spark/app/join_pollens_and_concentrations.py",
+    [
         "/usr/local/spark/resources/data/pollens",
         "/usr/local/spark/resources/data/concentrations",
         "/usr/local/spark/resources/data/measurements",
     ],
-    dag=dag,
+    dag,
 )
 
 load_allergen_types_args = get_spark_job_arguments(
     "allergen-types",
     rename_mapping={"name": "localized_name"},
     columns_to_transliterate=["localized_name"],
-    initcap_columns=["localized_name"]
+    initcap_columns=["localized_name"],
 )
-load_allergen_types_task = get_transform_and_load_spark_submit_operator("load_allergen_types", load_allergen_types_args, dag)
+load_allergen_types_task = get_transform_and_load_spark_submit_operator(
+    "load_allergen_types", load_allergen_types_args, dag
+)
 
 load_allergens_args = get_spark_job_arguments(
     "allergens",
     rename_mapping={"type": "type_id"},
     columns_to_transliterate=["localized_name"],
     initcap_columns=["name", "localized_name"],
-    drop_columns=["margine_top", "margine_bottom", "allergenicity_display"]
+    drop_columns=["margine_top", "margine_bottom", "allergenicity_display"],
 )
-load_allergens_task = get_transform_and_load_spark_submit_operator("load_allergens", load_allergens_args, dag) 
+load_allergens_task = get_transform_and_load_spark_submit_operator(
+    "load_allergens", load_allergens_args, dag
+)
 
 load_allergen_thresholds_args = get_spark_job_arguments("allergen-thresholds")
-load_allergen_thresholds_task = get_transform_and_load_spark_submit_operator("load_allergen_thresholds", load_allergen_thresholds_args, dag)
+load_allergen_thresholds_task = get_transform_and_load_spark_submit_operator(
+    "load_allergen_thresholds", load_allergen_thresholds_args, dag
+)
 
 load_locations_args = get_spark_job_arguments(
     "locations",
     columns_to_transliterate=["name"],
     initcap_columns=["name"],
-    type_mapping={"longitude": "double", "latitude": "double"}
+    type_mapping={"longitude": "double", "latitude": "double"},
 )
-load_locations_task = get_transform_and_load_spark_submit_operator("load_locations", load_locations_args, dag)
+load_locations_task = get_transform_and_load_spark_submit_operator(
+    "load_locations", load_locations_args, dag
+)
 
 load_measurements_args = get_spark_job_arguments(
     "measurements",
-    rename_mapping={"value": "concentration", "allergen": "allergen_id", "location": "location_id"},
+    rename_mapping={
+        "value": "concentration",
+        "allergen": "allergen_id",
+        "location": "location_id",
+    },
     type_mapping={"date": "date"},
     drop_columns=["pollen", "concentrations"],
-    input_is_parquet=True
+    input_is_parquet=True,
 )
-load_measurements_task = get_transform_and_load_spark_submit_operator("load_measurements", load_measurements_args, dag)
+load_measurements_task = get_transform_and_load_spark_submit_operator(
+    "load_measurements", load_measurements_args, dag
+)
 
 make_directories_task >> [
     scrape_allergen_types_task,
@@ -213,7 +228,12 @@ make_directories_task >> [
     scrape_pollens_task,
     scrape_concentrations_task,
 ]
-scrape_pollens_task >> scrape_concentrations_task >> join_pollens_and_concentrations_task >> load_measurements_task
+(
+    scrape_pollens_task
+    >> scrape_concentrations_task
+    >> join_pollens_and_concentrations_task
+    >> load_measurements_task
+)
 scrape_allergen_types_task >> load_allergen_types_task
 scrape_allergens_task >> load_allergen_types_task
 scrape_locations_task >> load_locations_task
@@ -221,4 +241,3 @@ scrape_locations_task >> load_locations_task
 load_allergen_types_task >> load_allergens_task
 load_allergens_task >> load_allergen_thresholds_task
 load_measurements_task << [load_allergens_task, load_locations_task]
-
