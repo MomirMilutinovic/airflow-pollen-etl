@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: mysecretpassword
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.2.2
     ports:
       - "3000:3000"
     volumes:
