@@ -6,5 +6,5 @@ RUN apt update && apt install -y procps && apt install -y default-jdk && rm -rf 
 ENV JAVA_HOME='/usr/lib/jvm/java-17-openjdk-amd64'
 USER airflow
 # Install the Spark provider for Airflow
-RUN pip install apache-airflow-providers-apache-spark
+RUN pip install apache-airflow-providers-apache-spark==4.11.0
 RUN pip install cyrtranslit==1.1.1
