@@ -8,3 +8,4 @@ USER airflow
 # Install the Spark provider for Airflow
 RUN pip install apache-airflow-providers-apache-spark==4.11.0
 RUN pip install cyrtranslit==1.1.1
+RUN pip install aiohttp==3.11.17
