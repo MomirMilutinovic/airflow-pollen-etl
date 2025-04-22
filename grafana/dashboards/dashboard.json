@@ -18,7 +18,6 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 3,
   "links": [],
   "panels": [
     {
@@ -129,7 +128,7 @@
         },
         "showHeader": true
       },
-      "pluginVersion": "11.2.0",
+      "pluginVersion": "11.2.2",
       "targets": [
         {
           "datasource": {
@@ -284,6 +283,18 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Concentration"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "grains/m^3"
+              }
+            ]
           }
         ]
       },
@@ -374,7 +385,7 @@
           "zoom": 7.5
         }
       },
-      "pluginVersion": "11.2.0",
+      "pluginVersion": "11.2.2",
       "targets": [
         {
           "datasource": {
@@ -441,8 +452,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -552,13 +562,13 @@
     "list": []
   },
   "time": {
-    "from": "2024-09-11T22:00:00.000Z",
-    "to": "2024-09-12T21:59:59.000Z"
+    "from": "2024-09-04T22:00:00.000Z",
+    "to": "2024-09-11T21:59:59.000Z"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "Pollen map",
   "uid": "bdzguu4tsh14wf",
-  "version": 11,
+  "version": 1,
   "weekStart": ""
 }
