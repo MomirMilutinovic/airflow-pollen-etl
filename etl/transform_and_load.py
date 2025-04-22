@@ -77,6 +77,16 @@ def parse_arguments():
         "--input_is_parquet",
         action="store_true",
     )
+    parser.add_argument(
+        "--only_insert_new",
+        action="store_true",
+        help="Insert only the new data, not the whole input directory. Use only for small tables."
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite all the data in the database with new data."
+    )
 
     return parser.parse_args()
 
@@ -111,4 +121,9 @@ if __name__ == "__main__":
 
     df.show()
 
-    df.dropDuplicates().write.jdbc(url, result_table_name, mode="append", properties=properties)
+    if args.only_insert_new:
+        df_in_db = spark.read.jdbc(url, result_table_name, properties=properties)
+        df = df.join(df_in_db, df.id == df_in_db.id, "leftanti")
+
+
+    df.dropDuplicates().write.jdbc(url, result_table_name, mode="append" if not args.overwrite else "overwrite", properties=properties)
