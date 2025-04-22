@@ -1,13 +1,14 @@
-from datetime import datetime
+import datetime
+from functools import partial
+import subprocess
+import json
 from airflow import DAG
 from airflow.decorators import task
 from airflow.models import Variable
 from airflow.operators.python_operator import PythonOperator
 from airflow.operators.bash import BashOperator
 from airflow.contrib.operators.spark_submit_operator import SparkSubmitOperator
-from functools import partial
-import subprocess
-import json
+from airflow.models.param import Param
 
 default_args = {
     "owner": "airflow",
@@ -118,18 +119,32 @@ def get_transform_and_load_spark_submit_operator(name, args, dag):
     )
 
 
-def scrape_pollens():
+def scrape_pollens(start_date: str, end_date: str):
     run_python_script(
         "/opt/airflow/etl/scrape_pollens.py",
-        [pollen_base_url + "pollens/", "/usr/local/spark/resources/data/pollens"],
+        [pollen_base_url + "pollens/", "/usr/local/spark/resources/data/pollens", start_date, end_date],
     )
 
 
 dag = DAG(
     "etl",
     default_args=default_args,
-    start_date=datetime(2024, 10, 7),
+    start_date=datetime.datetime(2024, 10, 7),
     catchup=False,
+    params={
+        "start_date": Param(
+            default="2016-01-01",
+            title="Start date",
+            description="Start of the date interval for which to download the data",
+            format="date",
+        ),
+        "end_date": Param(
+            default=f"{datetime.date.today()}",
+            title="End date",
+            description="End of the date interval for which to download the data",
+            format="date",
+        ),
+    },
 )
 
 make_directories_task = BashOperator(
@@ -164,6 +179,10 @@ scrape_locations_task = PythonOperator(
 )
 scrape_pollens_task = PythonOperator(
     task_id="scrape_pollens",
+    op_args=[
+        "{{ params.start_date }}",
+        "{{ params.end_date }}"
+    ],
     python_callable=scrape_pollens,
     dag=dag,
 )
