@@ -3,12 +3,13 @@ import json
 import requests
 import argparse
 
+session = requests.Session()
 
 def get_request(url):
     """
     Returns the JSON response from the api at url as a dict.
     """
-    return requests.get(url).json()
+    return session.get(url).json()
 
 
 def scrape_pages(url, content_key):
