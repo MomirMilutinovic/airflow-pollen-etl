@@ -133,8 +133,18 @@ dag = DAG(
 )
 
 make_directories_task = BashOperator(
-    task_id="bash_task",
-    bash_command="mkdir /usr/local/spark/resources/data/locations && mkdir /usr/local/spark/resources/data/concentrations && mkdir /usr/local/spark/resources/data/pollens && mkdir /usr/local/spark/resources/data/allergens && mkdir /usr/local/spark/resources/data/allergen-types",
+    task_id="make_directories",
+    bash_command="rm -rf /usr/local/spark/resources/data/measurements && "
+    + "rm -rf /usr/local/spark/resources/data/locations && "
+    + "mkdir /usr/local/spark/resources/data/locations && "
+    + "rm -rf /usr/local/spark/resources/data/concentrations && "
+    + "mkdir /usr/local/spark/resources/data/concentrations && "
+    + "rm -rf /usr/local/spark/resources/data/pollens && "
+    + "mkdir /usr/local/spark/resources/data/pollens && "
+    + "rm -rf /usr/local/spark/resources/data/allergens && "
+    + "mkdir /usr/local/spark/resources/data/allergens && "
+    + "rm -rf /usr/local/spark/resources/data/allergen-types &&"
+    + "mkdir /usr/local/spark/resources/data/allergen-types",
 )
 
 scrape_allergen_types_task = PythonOperator(
