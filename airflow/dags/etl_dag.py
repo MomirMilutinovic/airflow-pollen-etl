@@ -52,6 +52,8 @@ def get_spark_job_arguments(
     type_mapping=None,
     rename_mapping=None,
     input_is_parquet=False,
+    only_insert_new=False,
+    overwrite=False
 ):
     destination_table_name = (
         input_dir.replace("-", "_")
@@ -89,6 +91,10 @@ def get_spark_job_arguments(
         args.append(json.dumps(type_mapping))
     if input_is_parquet:
         args.append("--input_is_parquet")
+    if only_insert_new:
+        args.append("--only_insert_new")
+    if overwrite:
+        args.append("--overwrite")
 
     return args
 
@@ -177,6 +183,7 @@ load_allergen_types_args = get_spark_job_arguments(
     rename_mapping={"name": "localized_name"},
     columns_to_transliterate=["localized_name"],
     initcap_columns=["localized_name"],
+    only_insert_new=True,
 )
 load_allergen_types_task = get_transform_and_load_spark_submit_operator(
     "load_allergen_types", load_allergen_types_args, dag
@@ -188,12 +195,13 @@ load_allergens_args = get_spark_job_arguments(
     columns_to_transliterate=["localized_name"],
     initcap_columns=["name", "localized_name"],
     drop_columns=["margine_top", "margine_bottom", "allergenicity_display"],
+    only_insert_new=True,
 )
 load_allergens_task = get_transform_and_load_spark_submit_operator(
     "load_allergens", load_allergens_args, dag
 )
 
-load_allergen_thresholds_args = get_spark_job_arguments("allergen-thresholds")
+load_allergen_thresholds_args = get_spark_job_arguments("allergen-thresholds", overwrite=True)
 load_allergen_thresholds_task = get_transform_and_load_spark_submit_operator(
     "load_allergen_thresholds", load_allergen_thresholds_args, dag
 )
@@ -203,6 +211,7 @@ load_locations_args = get_spark_job_arguments(
     columns_to_transliterate=["name"],
     initcap_columns=["name"],
     type_mapping={"longitude": "double", "latitude": "double"},
+    only_insert_new=True
 )
 load_locations_task = get_transform_and_load_spark_submit_operator(
     "load_locations", load_locations_args, dag
