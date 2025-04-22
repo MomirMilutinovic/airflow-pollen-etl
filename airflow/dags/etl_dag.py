@@ -129,8 +129,8 @@ def scrape_pollens(start_date: str, end_date: str):
 dag = DAG(
     "etl",
     default_args=default_args,
-    start_date=datetime.datetime(2024, 10, 7),
     catchup=False,
+    schedule_interval=None,
     params={
         "start_date": Param(
             default="2016-01-01",
